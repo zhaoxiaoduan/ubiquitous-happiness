@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黑白之境 | 个人博客</title>
+    <!-- 第三方库导入 -->
+    <script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
+    <script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+    <script src="https://image.uc.cn/s/uae/g/3n/mos-production/three.min.js"></script>
+    <script src="https://image.uc.cn/s/uae/g/3n/mos-production/OrbitControls.js"></script>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f8f8;
+            --bg-tertiary: #f0f0f0;
+            --text-primary: #000000;
+            --text-secondary: #333333;
+            --text-tertiary: #666666;
+            --accent-color: #888888;
+            --border-color: #e0e0e0;
+            --card-bg: #ffffff;
+            --card-shadow: rgba(0, 0, 0, 0.08);
+            --transition-speed: 0.5s;
+            --particle-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-night {
+            --bg-primary: #000000;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --text-tertiary: #999999;
+            --accent-color: #888888;
+            --border-color: #333333;
+            --card-bg: #111111;
+            --card-shadow: rgba(255, 255, 255, 0.05);
+            --particle-color: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color var(--transition-speed) ease,
+                        color var(--transition-speed) ease,
+                        border-color var(--transition-speed) ease;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* 动态粒子背景 */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* 滚动触发动画 */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 3D翻转卡片 */
+        .card-3d {
+            perspective: 1000px;
+            width: 300px;
+            height: 400px;
+            margin: 0 auto;
+        }
+
+        .card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .card-3d:hover .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            background-color: var(--card-bg);
+        }
+
+        .card-back {
+            transform: rotateY(180deg);
+            background: linear-gradient(135deg, #111111, #333333);
+            color: white;
+        }
+
+        .card-back.night-theme {
+            background: linear-gradient(135deg, #222222, #444444);
+        }
+
+        /* 打字机效果 */
+        .typewriter {
+            overflow: hidden;
+            /* border-right: 2px solid var(--accent-color); */
+            white-space: nowrap;
+            margin: 0 auto;
+            letter-spacing: 0.15em;
+            animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: var(--accent-color) }
+        }
+
+        /* 视差滚动效果 */
+        .parallax-bg {
+            background-attachment: fixed;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            height: 60vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .parallax-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 100;
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .theme-night .navbar {
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .navbar.scrolled {
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .theme-night .navbar.scrolled {
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.05);
+        }
+
+        /* 爱好卡片 */
+        .hobby-card {
+            transition: transform 0.5s ease, box-shadow 0.5s ease;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px var(--card-shadow);
+            background-color: var(--card-bg);
+        }
+
+        .hobby-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px var(--card-shadow);
+        }
+
+        .hobby-img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            filter: grayscale(100%) contrast(120%);
+            transition: filter 0.5s ease;
+        }
+
+        .hobby-card:hover .hobby-img {
+            filter: grayscale(30%) contrast(110%);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .card-3d {
+                width: 250px;
+                height: 350px;
+            }
+            
+            .parallax-bg {
+                height: 40vh;
+                background-attachment: scroll;
+            }
+            
+            .typewriter {
+                white-space: normal;
+                border-right: none;
+                animation: none;
+            }
+        }
+
+        /* 主题切换按钮 */
+        .theme-toggle {
+            width: 60px;
+            height: 30px;
+            border-radius: 15px;
+            background-color: var(--bg-tertiary);
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .theme-toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--text-primary);
+            transition: transform 0.3s ease;
+        }
+
+        .theme-night .theme-toggle::after {
+            transform: translateX(30px);
+        }
+		/*图标颜色适配主题*/
+		.bg-accent .fas.fa-film{
+			color: #000000 !important;
+		}
+		.theme-night .bg-accent.fas.fa-film{
+			color: #ffffff !important;
+		}
+
+        /* 分割线动画 */
+        .divider {
+            height: 1px;
+            width: 100%;
+            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+            margin: 40px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--text-primary), transparent);
+            animation: slide 3s infinite;
+        }
+
+        @keyframes slide {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        /* 社交图标动画 */
+        .social-icon {
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .social-icon:hover {
+            transform: scale(1.2) translateY(-5px);
+        }
+		
+		/*头像框颜色适配主题*/
+		.border-accent{
+			border-color: #000000 !important;
+		}
+		.theme-night .border-accent{
+			border-color: #ffffff !important;
+		}
+		
+		/* 箭头基础样式：持续弹跳 */
+		#finalArrow {
+		  display: inline-block;
+		  animation: finalBounce 2s infinite;
+		  transition: transform 0.3s ease, color 0.3s ease !important;
+		}
+		
+		/* 鼠标悬停时：放大、上移 */
+		#finalArrow:hover {
+		  animation-play-state: paused !important;
+		  transform: scale(1.3) translateY(-8px) !important;
+		}
+		
+		/* 浅色主题下的颜色 */
+		#finalArrow {
+		  color: #000000;
+		}
+		#finalArrow:hover {
+		  color: #000000 !important;
+		}
+		
+		/* 深色主题下的颜色 */
+		.theme-night #finalArrow {
+		  color: #ffffff !important;
+		}
+		.theme-night #finalArrow:hover {
+		  color: #ffffff !important;
+		}
+		
+		/* 自定义弹跳动画 */
+		@keyframes finalBounce {
+		  0%, 20%, 50%, 80%, 100% {
+		    transform: translateY(0);
+		  }
+		  40% {
+		    transform: translateY(-10px);
+		  }
+		  60% {
+		    transform: translateY(-5px);
+		  }
+		}
+
+        /* 进度条动画 */
+        .skill-bar {
+            height: 8px;
+            background-color: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .skill-progress {
+            height: 100%;
+            border-radius: 4px;
+            background-color: var(--accent-color);
+            width: 0;
+            transition: width 1.5s ease-out;
+        }
+
+        .skill-bar.animated .skill-progress {
+            width: var(--skill-width);
+        }
+    </style>
+</head>
+<body class="theme-day">
+    <!-- 动态粒子背景 -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- 导航栏 -->
+    <nav class="navbar py-4 px-6">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="text-2xl font-bold tracking-wider">BLACK & WHITE</div>
+            <div class="flex items-center space-x-6">
+                <a href="#home" class="hover:text-accent transition-colors duration-300">首页</a>
+                <a href="#about" class="hover:text-accent transition-colors duration-300">关于</a>
+                <a href="#hobbies" class="hover:text-accent transition-colors duration-300">爱好</a>
+                <a href="#contact" class="hover:text-accent transition-colors duration-300">联系</a>
+                <div class="theme-toggle" id="themeToggle"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主页英雄区域 -->
+    <section id="home" class="min-h-screen flex flex-col justify-center items-center relative overflow-hidden">
+        <div class="parallax-bg w-full absolute top-0 left-0 z-0" style="background-color: var(--bg-secondary);"></div>
+        <div class="container mx-auto px-6 z-10 text-center py-24">
+            <h1 class="text-5xl md:text-7xl font-bold mb-6 fade-in">
+                <span class="typewriter">在黑白之间</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-tertiary mb-10 fade-in" style="animation-delay: 0.3s;">
+                寻找生活的纯粹与深度
+            </p>
+            <div class="card-3d fade-in" style="animation-delay: 0.6s;">
+                <div class="card-inner">
+                    <div class="card-front">
+                        <div class="w-40 h-40 rounded-full mb-6 overflow-hidden border-4 border-accent">
+                            <!-- <div class="w-full h-full bg-gradient-to-br from-gray-300 to-gray-700 flex items-center justify-center">
+                                <i class="fas fa-user text-6xl text-white"></i>
+                            </div> -->
+							<img src="img/星图.jpg" alt="视觉探索者" class="w-full h-full object-cover">
+                        </div>
+                        <h3 class="text-2xl font-bold mb-2">视觉探索者</h3>
+                        <p class="text-tertiary text-center">自由 · 热爱 · 真诚</p>
+                    </div>
+                    <div class="card-back">
+                        <h3 class="text-2xl font-bold mb-4">关于我</h3>
+                        <p class="text-center mb-4">追求极简美学的生活观察者，在黑白光影中寻找情感共鸣。</p>
+                        <div class="flex space-x-4 mt-4">
+                            <div class="social-icon">
+                                <i class="fab fa-instagram text-2xl"></i>
+                            </div>
+                            <div class="social-icon">
+                                <i class="fab fa-spotify text-2xl"></i>
+                            </div>
+                            <div class="social-icon">
+                                <i class="fab fa-letterboxd text-2xl"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+		<!--下拉箭头-->
+        <!-- <div class="absolute bottom-5 left-[50%] transform -translate-x-1/2 animate-bounce"> -->
+		<!-- <div class="animated\-bounce pb-8">
+            <i class="fas fa-chevron-down text-2xl"></i>
+        </div> -->
+		<!-- 外层容器：只负责绝对定位，确保始终居中 -->
+		<div style="position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); z-index: 9999; cursor: pointer;">
+		  <!-- 内层图标：只负责动画和悬停效果 -->
+		  <i id="finalArrow" class="fas fa-chevron-down text-2xl"></i>
+		</div>
+    </section>
+
+    <!-- 关于我部分 -->
+    <section id="about" class="py-20 px-6 bg-tertiary">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 fade-in">关于我</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div class="fade-in">
+                    <h3 class="text-3xl font-bold mb-6">INFJ</h3>
+                    <p class="mb-6 text-secondary">我相信最复杂的情感往往藏匿于最简单的形式之中。黑白不是色彩的缺失，而是情感的浓缩，是剥离冗余后留下的纯粹本质。</p>
+                    <!-- <p class="mb-6 text-secondary">在生活中，我追求平衡与和谐，喜欢观察光影变化，捕捉日常中的诗意瞬间。这种审美也延伸到我的爱好与思维方式中。</p> -->
+                    <div class="space-y-4">
+						<div>
+						    <div class="flex justify-between mb-1">
+						        <span>内向</span>
+						        <span>63%</span>
+						    </div>
+						    <div class="skill-bar">
+						        <div class="skill-progress" style="--skill-width: 63%"></div>
+						    </div>
+						</div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>有远见</span>
+                                <span>68%</span>
+                            </div>
+                            <div class="skill-bar">
+                                <div class="skill-progress" style="--skill-width: 68%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>感受</span>
+                                <span>73%</span>
+                            </div>
+                            <div class="skill-bar">
+                                <div class="skill-progress" style="--skill-width: 73%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between mb-1">
+                                <span>评判</span>
+                                <span>68%</span>
+                            </div>
+                            <div class="skill-bar">
+                                <div class="skill-progress" style="--skill-width: 68%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="fade-in" style="animation-delay: 0.3s;">
+                    <div class="bg-card p-8 rounded-2xl shadow-xl">
+                        <h4 class="text-2xl font-bold mb-6">人生信条</h4>
+                        <div class="space-y-6">
+                            <div class="flex items-start">
+                                <div class="text-accent mr-4 mt-1">
+                                    <i class="fas fa-quote-left"></i>
+                                </div>
+                                <p>最好的设计不是无物可添，而是无物可减。</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="text-accent mr-4 mt-1">
+                                    <i class="fas fa-quote-left"></i>
+                                </div>
+                                <p>在喧嚣中寻找静谧，在复杂中提炼简单。</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="text-accent mr-4 mt-1">
+                                    <i class="fas fa-quote-left"></i>
+                                </div>
+                                <p>黑白之间，藏着无限层次的灰，正如生活本身。</p>
+                            </div>
+							<div class="flex items-start">
+							    <div class="text-accent mr-4 mt-1">
+							        <i class="fas fa-quote-left"></i>
+							    </div>
+							    <p>莫冲动，要反复思考后再做决定。</p>
+							</div>
+							<div class="flex items-start">
+							    <div class="text-accent mr-4 mt-1">
+							        <i class="fas fa-quote-left"></i>
+							    </div>
+							    <p>遇事先冷静，保持清醒，万事靠自己。</p>
+							</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 爱好与特长部分 -->
+    <section id="hobbies" class="py-20 px-6">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 fade-in">爱好与特长</h2>
+            <p class="text-xl text-center text-secondary mb-12 max-w-3xl mx-auto fade-in">在音乐与电影中，我找到了黑白美学最丰富的表达形式。这两种艺术媒介让我能够探索情感的深度与复杂性。</p>
+            
+            <div class="divider"></div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-20">
+                <!-- 音乐爱好卡片 -->
+                <div class="hobby-card fade-in">
+                    <div class="hobby-img-container overflow-hidden">
+                        <img src="https://agent.qianwen.com/mos/196e3b77787a4184be23bf989a619584/9738fe45e94369b1b5a5a9aae298759a" 
+                             alt="黑胶唱片收藏" 
+                             class="hobby-img">
+                    </div>
+                    <div class="p-8">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 rounded-full bg-accent flex items-center justify-center mr-4">
+                                <i class="fas fa-music text-xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold">音乐</h3>
+                        </div>
+                        <p class="text-secondary mb-6">对我而言，音乐是情感的纯数学。黑胶唱片的实体质感与模拟音质，让我感受到声音的温度与纹理。从古典的复杂和声到极简的现代电子，我迷恋于声音如何构建情绪空间。</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">黑胶收藏</span>
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">环境音乐</span>
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">平等互惠</span>
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">自然美</span>
+							<span class="px-3 py-1 bg-tertiary rounded-full text-sm">独立</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 电影爱好卡片 -->
+                <div class="hobby-card fade-in" style="animation-delay: 0.3s;">
+                    <div class="hobby-img-container overflow-hidden">
+                        <img src="https://agent.qianwen.com/mos/e401c860227c4a7c8aa16c5aea4189d1/5741e99c9e7cc2d4853c66e6b8f3a654" 
+                             alt="黑色电影风格画面" 
+                             class="hobby-img">
+                    </div>
+                    <div class="p-8">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 rounded-full bg-accent flex items-center justify-center mr-4">
+                                <i class="fas fa-film text-xl"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold">电影</h3>
+                        </div>
+                        <p class="text-secondary mb-6">电影是移动的视觉诗。我尤其钟情于黑白电影与高对比度影像，它们剥离了色彩的干扰，让构图、光影与表演成为情感的绝对载体。从经典黑色电影到现代极简主义影片，我研究视觉叙事如何触动人心。</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">艺术电影</span>
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">视觉叙事</span>
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">追求自由</span>
+                            <span class="px-3 py-1 bg-tertiary rounded-full text-sm">觉醒</span>
+							<span class="px-3 py-1 bg-tertiary rounded-full text-sm">突破</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-card p-8 md:p-12 rounded-2xl shadow-xl fade-in" style="animation-delay: 0.6s;">
+                <h3 class="text-2xl font-bold mb-6 text-center">艺术共鸣</h3>
+                <p class="text-center text-secondary max-w-3xl mx-auto">音乐与电影对我而言是同一枚硬币的两面：都是时间的艺术，都是情感的载体。在音乐中，我听到光影的变幻；在电影中，我看到声音的形状。它们共同构成了我理解世界与自我的方式，在黑白之间，揭示生活的无限层次。</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- 联系部分 -->
+    <section id="contact" class="py-20 px-6 bg-tertiary">
+        <div class="container mx-auto">
+            <h2 class="text-4xl font-bold text-center mb-16 fade-in">保持联系</h2>
+            <div class="max-w-2xl mx-auto">
+                <div class="bg-card p-8 rounded-2xl shadow-xl fade-in">
+                    <p class="text-center text-secondary mb-10">如果你也欣赏简约美学，或在音乐与电影中有共鸣的发现，欢迎与我交流。</p>
+                    
+                    <div class="flex justify-center space-x-8 mb-10">
+                        <div class="social-icon text-center">
+                            <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center mx-auto mb-3">
+                                <i class="fab fa-instagram text-2xl"></i>
+                            </div>
+                            <span class="text-sm">forever503@sina.cn</span>
+                        </div>
+                        <div class="social-icon text-center">
+                            <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center mx-auto mb-3">
+                                <i class="fab fa-spotify text-2xl"></i>
+                            </div>
+                            <span class="text-sm">kris</span>
+                        </div>
+                        <div class="social-icon text-center">
+                            <div class="w-16 h-16 rounded-full bg-accent flex items-center justify-center mx-auto mb-3">
+                                <i class="fas fa-envelope text-2xl"></i>
+                            </div>
+                            <span class="text-sm">1679083510@qq.com</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <p class="text-secondary italic">"在简约中寻找深度，在黑白中看见色彩"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="py-8 px-6 border-t border-border">
+        <div class="container mx-auto text-center">
+            <p class="text-tertiary">© ZXD 黑白之境 探索简约美学</p>
+            <p class="text-tertiary text-sm mt-2">让生活回归本真</p>
+        </div>
+    </footer>
+
+    <script>
+        // 初始化主题
+        const body = document.body;
+        const themeToggle = document.getElementById('themeToggle');
+        
+        // 检查本地存储的主题偏好
+        const savedTheme = localStorage.getItem('theme') || 'day';
+        if (savedTheme === 'night') {
+            // body.classList.remove('theme-day');
+            body.classList.add('theme-night');
+        }
+        
+        // 主题切换功能
+        themeToggle.addEventListener('click', () => {
+            // if (body.classList.contains('theme-day')) {
+            //     body.classList.remove('theme-day');
+            //     body.classList.add('theme-night');
+            //     localStorage.setItem('theme', 'night');
+            // } else {
+            //     body.classList.remove('theme-night');
+            //     body.classList.add('theme-day');
+            //     localStorage.setItem('theme', 'day');
+            // }
+			const isNight = body.classList.toggle('theme-night');
+			localStorage.setItem('theme',inNight ? 'night' : 'day');
+        });
+
+        // 滚动触发动画
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    
+                    // 如果是技能条，触发进度动画
+                    if (entry.target.classList.contains('skill-bar')) {
+                        entry.target.classList.add('animated');
+                    }
+                }
+            });
+        }, observerOptions);
+
+        // 观察所有需要淡入的元素
+        document.querySelectorAll('.fade-in, .skill-bar').forEach(el => {
+            observer.observe(el);
+        });
+
+        // 导航栏滚动效果
+        const navbar = document.querySelector('.navbar');
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+            
+            // 视差滚动效果
+            const parallaxBg = document.querySelector('.parallax-bg');
+            const scrolled = window.scrollY;
+            parallaxBg.style.transform = `translateY(${scrolled * 0.5}px)`;
+        });
+
+        // 动态粒子背景
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        
+        // 设置canvas尺寸
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        // 粒子类
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 1 - 0.5;
+                this.speedY = Math.random() * 1 - 0.5;
+                this.color = getComputedStyle(document.documentElement).getPropertyValue('--particle-color').trim();
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                
+                // 边界检查
+                if (this.x > canvas.width) this.x = 0;
+                else if (this.x < 0) this.x = canvas.width;
+                
+                if (this.y > canvas.height) this.y = 0;
+                else if (this.y < 0) this.y = canvas.height;
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // 初始化粒子
+        function initParticles() {
+            particles = [];
+            const particleCount = Math.min(Math.floor((canvas.width * canvas.height) / 10000), 150);
+            
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+        }
+        
+        // 连接粒子
+        function connectParticles() {
+            const maxDistance = 100;
+            
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < maxDistance) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--particle-color').trim();
+                        ctx.lineWidth = 0.2;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        // 动画循环
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 更新和绘制粒子
+            for (let particle of particles) {
+                particle.update();
+                particle.draw();
+            }
+            
+            connectParticles();
+            requestAnimationFrame(animateParticles);
+        }
+        
+        // 鼠标互动
+        let mouseX = 0;
+        let mouseY = 0;
+        
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // 鼠标附近的粒子加速
+            for (let particle of particles) {
+                const dx = mouseX - particle.x;
+                const dy = mouseY - particle.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const maxDistance = 150;
+                
+                if (distance < maxDistance) {
+                    const force = (maxDistance - distance) / maxDistance;
+                    particle.speedX += dx * 0.002 * force;
+                    particle.speedY += dy * 0.002 * force;
+					
+                    
+                    // 限制最大速度
+                    const maxSpeed = 3;
+                    const currentSpeed = Math.sqrt(particle.speedX * particle.speedX + particle.speedY * particle.speedY);
+                    if (currentSpeed > maxSpeed) {
+                        particle.speedX = (particle.speedX / currentSpeed) * maxSpeed;
+                        particle.speedY = (particle.speedY / currentSpeed) * maxSpeed;
+                    }
+                }
+            }
+        });
+        
+        // 初始化粒子系统
+        resizeCanvas();
+        initParticles();
+        animateParticles();
+        
+        // 窗口大小调整时重置
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            initParticles();
+        });
+        
+        // 平滑滚动
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // 打字机效果初始化
+        const typewriterElements = document.querySelectorAll('.typewriter');
+        typewriterElements.forEach((el, index) => {
+            // 保存原始文本
+            const originalText = el.textContent;
+            el.textContent = '';
+            
+            // 延迟开始打字效果
+            setTimeout(() => {
+                let i = 0;
+                const typeWriter = () => {
+                    if (i < originalText.length) {
+                        el.textContent += originalText.charAt(i);
+                        i++;
+                        setTimeout(typeWriter, 100);
+                    }
+                };
+                typeWriter();
+            }, index * 500);
+        });
+    </script>
+</body>
+</html>
